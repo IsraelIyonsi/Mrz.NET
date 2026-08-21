@@ -48,6 +48,25 @@ public static class IcaoSpecimens
     public static readonly MrzSpecimen Td1Eriksson = BuildTd1Eriksson();
 
     /// <summary>
+    /// An MRV-A machine-readable visa (ICAO Doc 9303 Part 7), sharing TD3's two-lines-of-44
+    /// geometry but distinguished by a document code beginning with "V". Its document number,
+    /// date of birth, and date of expiry (with their check digits) are the same verified
+    /// segments as <see cref="Td3Eriksson"/>, so the per-field check digits stay valid without
+    /// new arithmetic. A visa has no composite check digit, so line 2 ends in a plain
+    /// optional-data field rather than a personal number check digit and composite check digit.
+    /// </summary>
+    public static readonly MrzSpecimen MrvAEriksson = BuildMrvAEriksson();
+
+    /// <summary>
+    /// An MRV-B machine-readable visa (ICAO Doc 9303 Part 7), sharing TD2's two-lines-of-36
+    /// geometry but distinguished by a document code beginning with "V". As with
+    /// <see cref="MrvAEriksson"/>, the document number, date of birth, and date of expiry
+    /// segments are reused verbatim from the verified worked examples, and there is no composite
+    /// check digit.
+    /// </summary>
+    public static readonly MrzSpecimen MrvBEriksson = BuildMrvBEriksson();
+
+    /// <summary>
     /// A TD1 specimen whose name field is filled exactly to capacity with no trailing filler,
     /// exercising the truncation signal. Lines 1 and 2 are otherwise identical to
     /// <see cref="Td1Eriksson"/>, so the check digits remain valid without new arithmetic.
@@ -99,6 +118,52 @@ public static class IcaoSpecimens
             MrzSex.Female,
             "120415",
             "ZE184226B",
+            null);
+    }
+
+    private static MrzSpecimen BuildMrvAEriksson()
+    {
+        string line1 = "V<" + "UTO" + Pad("ERIKSSON<<ANNA<MARIA", 39);
+        string line2 = "L898902C3" + "6" + "UTO" + "740812" + "2" + "F" + "120415" + "9"
+            + Pad("ZE184226B", 16);
+
+        return new MrzSpecimen(
+            "ICAO 9303 Part 7 MRV-A machine-readable visa (ERIKSSON)",
+            MrzDocumentType.MrvA,
+            new[] { line1, line2 },
+            "V",
+            "UTO",
+            "ERIKSSON",
+            "ANNA MARIA",
+            "L898902C3",
+            "UTO",
+            "740812",
+            MrzSex.Female,
+            "120415",
+            "ZE184226B",
+            null);
+    }
+
+    private static MrzSpecimen BuildMrvBEriksson()
+    {
+        string line1 = "V<" + "UTO" + Pad("ERIKSSON<<ANNA<MARIA", 31);
+        string line2 = "L898902C3" + "6" + "UTO" + "740812" + "2" + "F" + "120415" + "9"
+            + Pad("XY98765", 8);
+
+        return new MrzSpecimen(
+            "ICAO 9303 Part 7 MRV-B machine-readable visa (ERIKSSON)",
+            MrzDocumentType.MrvB,
+            new[] { line1, line2 },
+            "V",
+            "UTO",
+            "ERIKSSON",
+            "ANNA MARIA",
+            "L898902C3",
+            "UTO",
+            "740812",
+            MrzSex.Female,
+            "120415",
+            "XY98765",
             null);
     }
 

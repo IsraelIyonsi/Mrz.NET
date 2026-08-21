@@ -41,9 +41,10 @@ namespace Mrz;
 /// century caveat as <paramref name="DateOfBirth"/>.
 /// </param>
 /// <param name="PersonalNumber">
-/// The optional or personal number field (TD3 personal number, TD2 optional data, or TD1
-/// second optional data field), with trailing filler padding removed, or <see langword="null"/>
-/// if the field is entirely filler.
+/// The optional or personal number field (TD3 personal number, TD2 optional data, TD1 second
+/// optional data field, or the MRV-A and MRV-B visa optional-data region), with trailing filler
+/// padding removed, or <see langword="null"/> if the field is entirely filler. For a visa this
+/// carries the raw optional data as printed; ICAO 9303 defines no check digit over it.
 /// </param>
 /// <param name="SupplementalOptionalData">
 /// The TD1 first optional data field, adjacent to the document number on line 1, with trailing

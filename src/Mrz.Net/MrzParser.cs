@@ -4,7 +4,9 @@ namespace Mrz;
 
 /// <summary>
 /// Parses ICAO 9303 machine-readable-zone text into a typed <see cref="MrzDocument"/>, auto
-/// detecting the TD1, TD2, or TD3 layout from the number and length of lines supplied.
+/// detecting the TD1, TD2, or TD3 layout, or the MRV-A and MRV-B machine-readable visas, from
+/// the number and length of lines supplied and the document code. A visa shares its geometry
+/// with TD3 (MRV-A) or TD2 (MRV-B) and is told apart by a document code beginning with "V".
 /// </summary>
 /// <remarks>
 /// Parsing only throws <see cref="MrzFormatException"/> for structural problems: an
@@ -53,6 +55,8 @@ public static class MrzParser
             MrzDocumentType.Td1 => ParseTd1(lines),
             MrzDocumentType.Td2 => ParseTd2(lines),
             MrzDocumentType.Td3 => ParseTd3(lines),
+            MrzDocumentType.MrvA => ParseMrvA(lines),
+            MrzDocumentType.MrvB => ParseMrvB(lines),
             _ => throw new MrzFormatException($"Unhandled document type '{documentType}'."),
         };
     }
@@ -135,14 +139,23 @@ public static class MrzParser
             return MrzDocumentType.Td1;
         }
 
+        // TD2 IDs and MRV-B visas share the two-lines-of-36 geometry, and TD3 passports and
+        // MRV-A visas share the two-lines-of-44 geometry. The only thing that distinguishes a
+        // visa is a document code beginning with 'V' (ICAO Doc 9303 Part 7); anything else in
+        // the code position keeps the existing TD2/TD3 ID or passport path unchanged. The gate
+        // is deliberately strict on that first character.
         if (lines.Count == Td2Layout.LineCount && AllLinesHaveLength(lines, Td2Layout.LineLength))
         {
-            return MrzDocumentType.Td2;
+            return StartsWithVisaCode(lines[0], Td2Layout.DocumentCodeOffset)
+                ? MrzDocumentType.MrvB
+                : MrzDocumentType.Td2;
         }
 
         if (lines.Count == Td3Layout.LineCount && AllLinesHaveLength(lines, Td3Layout.LineLength))
         {
-            return MrzDocumentType.Td3;
+            return StartsWithVisaCode(lines[0], Td3Layout.DocumentCodeOffset)
+                ? MrzDocumentType.MrvA
+                : MrzDocumentType.Td3;
         }
 
         string lineLengths = string.Join(", ", lines.Select(line => line.Length));
@@ -165,6 +178,9 @@ public static class MrzParser
 
         return true;
     }
+
+    private static bool StartsWithVisaCode(string line1, int documentCodeOffset) =>
+        line1[documentCodeOffset] == MrzConstants.VisaDocumentCodeCharacter;
 
     private static MrzDocument ParseTd3(IReadOnlyList<string> lines)
     {
@@ -221,6 +237,110 @@ public static class MrzParser
             MapSex(sexCharacter),
             dateOfExpiry,
             TrimToNull(personalNumber),
+            null,
+            lines,
+            validation);
+    }
+
+    private static MrzDocument ParseMrvA(IReadOnlyList<string> lines)
+    {
+        string line1 = lines[0];
+        string line2 = lines[1];
+
+        string documentCode = TrimTrailingFiller(ExtractLetters(line1, MrvALayout.DocumentCodeOffset, MrzConstants.DocumentCodeLength, "document code"));
+        string issuingState = ExtractLetters(line1, MrvALayout.IssuingStateOffset, MrzConstants.StateOrNationalityLength, "issuing state");
+        string nameField = ExtractLetters(line1, MrvALayout.NameFieldOffset, MrvALayout.NameFieldLength, "name field");
+
+        string documentNumber = ExtractAlphanumeric(line2, MrvALayout.DocumentNumberOffset, MrzConstants.DocumentNumberLength, "document number");
+        char documentNumberCheckDigit = ExtractCheckDigit(line2, MrvALayout.DocumentNumberCheckDigitOffset, "document number check digit");
+        string nationality = ExtractLetters(line2, MrvALayout.NationalityOffset, MrzConstants.StateOrNationalityLength, "nationality");
+        string dateOfBirth = ExtractDateOfBirth(line2, MrvALayout.DateOfBirthOffset, MrzConstants.DateLength, "date of birth");
+        char dateOfBirthCheckDigit = ExtractCheckDigit(line2, MrvALayout.DateOfBirthCheckDigitOffset, "date of birth check digit");
+        char sexCharacter = ExtractSex(line2, MrvALayout.SexOffset);
+        string dateOfExpiry = ExtractDigits(line2, MrvALayout.DateOfExpiryOffset, MrzConstants.DateLength, "date of expiry");
+        char dateOfExpiryCheckDigit = ExtractCheckDigit(line2, MrvALayout.DateOfExpiryCheckDigitOffset, "date of expiry check digit");
+        string optionalData = ExtractAlphanumeric(line2, MrvALayout.OptionalDataOffset, MrvALayout.OptionalDataLength, "optional data");
+
+        return BuildVisa(MrzDocumentType.MrvA, lines, documentCode, issuingState, nameField, documentNumber,
+            documentNumberCheckDigit, nationality, dateOfBirth, dateOfBirthCheckDigit, sexCharacter, dateOfExpiry,
+            dateOfExpiryCheckDigit, optionalData);
+    }
+
+    private static MrzDocument ParseMrvB(IReadOnlyList<string> lines)
+    {
+        string line1 = lines[0];
+        string line2 = lines[1];
+
+        string documentCode = TrimTrailingFiller(ExtractLetters(line1, MrvBLayout.DocumentCodeOffset, MrzConstants.DocumentCodeLength, "document code"));
+        string issuingState = ExtractLetters(line1, MrvBLayout.IssuingStateOffset, MrzConstants.StateOrNationalityLength, "issuing state");
+        string nameField = ExtractLetters(line1, MrvBLayout.NameFieldOffset, MrvBLayout.NameFieldLength, "name field");
+
+        string documentNumber = ExtractAlphanumeric(line2, MrvBLayout.DocumentNumberOffset, MrzConstants.DocumentNumberLength, "document number");
+        char documentNumberCheckDigit = ExtractCheckDigit(line2, MrvBLayout.DocumentNumberCheckDigitOffset, "document number check digit");
+        string nationality = ExtractLetters(line2, MrvBLayout.NationalityOffset, MrzConstants.StateOrNationalityLength, "nationality");
+        string dateOfBirth = ExtractDateOfBirth(line2, MrvBLayout.DateOfBirthOffset, MrzConstants.DateLength, "date of birth");
+        char dateOfBirthCheckDigit = ExtractCheckDigit(line2, MrvBLayout.DateOfBirthCheckDigitOffset, "date of birth check digit");
+        char sexCharacter = ExtractSex(line2, MrvBLayout.SexOffset);
+        string dateOfExpiry = ExtractDigits(line2, MrvBLayout.DateOfExpiryOffset, MrzConstants.DateLength, "date of expiry");
+        char dateOfExpiryCheckDigit = ExtractCheckDigit(line2, MrvBLayout.DateOfExpiryCheckDigitOffset, "date of expiry check digit");
+        string optionalData = ExtractAlphanumeric(line2, MrvBLayout.OptionalDataOffset, MrvBLayout.OptionalDataLength, "optional data");
+
+        return BuildVisa(MrzDocumentType.MrvB, lines, documentCode, issuingState, nameField, documentNumber,
+            documentNumberCheckDigit, nationality, dateOfBirth, dateOfBirthCheckDigit, sexCharacter, dateOfExpiry,
+            dateOfExpiryCheckDigit, optionalData);
+    }
+
+    // MRV-A and MRV-B differ only in geometry (line length, name-field length, and the width of
+    // the trailing optional-data field); once each has extracted its fields the assembly and
+    // validation are identical, so they share this builder. Crucially, a machine-readable visa
+    // has NO overall composite check digit and no independently check-digited personal number:
+    // ICAO 9303 Part 7 defines the trailing line-2 region as plain optional data. The composite
+    // computation that TD1/TD2/TD3 perform is therefore deliberately not run here, and both the
+    // composite and personal-number validity flags are reported as null (not applicable) rather
+    // than a misleading false.
+    private static MrzDocument BuildVisa(
+        MrzDocumentType documentType,
+        IReadOnlyList<string> lines,
+        string documentCode,
+        string issuingState,
+        string nameField,
+        string documentNumber,
+        char documentNumberCheckDigit,
+        string nationality,
+        string dateOfBirth,
+        char dateOfBirthCheckDigit,
+        char sexCharacter,
+        string dateOfExpiry,
+        char dateOfExpiryCheckDigit,
+        string optionalData)
+    {
+        (string surname, string givenNames, bool isTruncated) = MrzNameField.Parse(nameField);
+
+        bool documentNumberValid = MrzCheckDigitCalculator.Verify(documentNumber, documentNumberCheckDigit);
+        bool dateOfBirthValid = MrzCheckDigitCalculator.Verify(dateOfBirth, dateOfBirthCheckDigit);
+        bool dateOfExpiryValid = MrzCheckDigitCalculator.Verify(dateOfExpiry, dateOfExpiryCheckDigit);
+
+        MrzValidationResult validation = new(
+            documentNumberValid,
+            dateOfBirthValid,
+            dateOfExpiryValid,
+            null,
+            null,
+            documentNumberValid && dateOfBirthValid && dateOfExpiryValid);
+
+        return new MrzDocument(
+            documentType,
+            documentCode,
+            issuingState,
+            surname,
+            givenNames,
+            isTruncated,
+            TrimTrailingFiller(documentNumber),
+            nationality,
+            dateOfBirth,
+            MapSex(sexCharacter),
+            dateOfExpiry,
+            TrimToNull(optionalData),
             null,
             lines,
             validation);

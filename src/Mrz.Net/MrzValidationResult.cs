@@ -20,7 +20,11 @@ namespace Mrz;
 /// </param>
 /// <param name="CompositeCheckDigitValid">
 /// Whether the composite check digit matches the computed 7-3-1 check digit over the
-/// concatenation of the fields it protects.
+/// concatenation of the fields it protects, or <see langword="null"/> for document types
+/// (the MRV-A and MRV-B machine-readable visas) that ICAO 9303 defines with no overall
+/// composite check digit. A visa's trailing line-2 positions are optional data, not a
+/// composite check, so this is <see langword="null"/> rather than a misleading
+/// <see langword="false"/>.
 /// </param>
 /// <param name="IsValid">
 /// Whether every applicable check digit above is valid. This is the single flag most callers
@@ -31,5 +35,5 @@ public sealed record MrzValidationResult(
     bool DateOfBirthCheckDigitValid,
     bool DateOfExpiryCheckDigitValid,
     bool? PersonalNumberCheckDigitValid,
-    bool CompositeCheckDigitValid,
+    bool? CompositeCheckDigitValid,
     bool IsValid);

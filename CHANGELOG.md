@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-08-21
+
+### Added
+
+- Machine-readable visa support: the `MrzDocumentType.MrvA` (two lines of 44, sharing TD3 geometry) and `MrzDocumentType.MrvB` (two lines of 36, sharing TD2 geometry) formats from ICAO Doc 9303 Part 7. `MrzParser.Parse` auto-detects a visa when the line geometry matches TD3 or TD2 and the document code begins with `V`, routing it to `MrvA` or `MrvB` respectively; passports (`P`) and existing TD1/TD2/TD3 ID paths are unchanged.
+- Verified against MRV-A and MRV-B specimens whose document number, date of birth, and date of expiry segments (with their check digits) reuse the ICAO worked example verbatim, plus corruption variants asserting that a corrupted per-field check digit is still caught.
+
+### Changed
+
+- A machine-readable visa carries no overall composite check digit (ICAO Doc 9303 Part 7 defines the trailing line-2 positions as optional data), so the parser no longer computes or validates a composite check digit for `MrvA` and `MrvB`. `MrzValidationResult.CompositeCheckDigitValid` is now `bool?` and is `null` for a visa (as is `PersonalNumberCheckDigitValid`), rather than reporting a misleading composite-check failure on a valid visa. The composite check digit is still computed and validated unchanged for TD1, TD2, and TD3. A visa's optional-data region is exposed raw through `MrzDocument.PersonalNumber`.
+
 ## [0.1.0] - 2026-08-12
 
 ### Added

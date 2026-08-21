@@ -1,6 +1,6 @@
 # Mrz.NET
 
-ICAO 9303 machine-readable-zone parser and validator for passports and ID cards. Parses TD1, TD2, and TD3 layouts and verifies every check digit against the official 7-3-1 algorithm. Zero external dependencies.
+ICAO 9303 machine-readable-zone parser and validator for passports, ID cards, and visas. Parses TD1, TD2, and TD3 layouts plus MRV-A and MRV-B machine-readable visas, and verifies every check digit against the official 7-3-1 algorithm. Zero external dependencies.
 
 Every passport, national ID card, and visa printed to ICAO Doc 9303 carries two or three lines of OCR-B text at the bottom: the machine-readable zone. It packs the document type, issuing state, holder name, document number, nationality, date of birth, sex, expiry date, and a set of check digits into a handful of fixed-width lines. Reading it correctly is the first step in any KYC or border-control pipeline, and getting the check-digit math wrong is the easiest way to silently accept a forged or mistyped document. On NuGet there was no small, dependency-free, ICAO-verified library for this. Mrz.NET is that library: it embeds the ICAO worked examples as test fixtures and asserts exact field parsing and exact check-digit results against them, including deliberately corrupted input.
 
@@ -83,10 +83,12 @@ var screeningRequest = new
 | Format | Lines | Line length | Typical use |
 |---|---|---|---|
 | TD1 | 3 | 30 | National ID cards |
-| TD2 | 2 | 36 | ID cards and visas |
+| TD2 | 2 | 36 | ID cards |
 | TD3 | 2 | 44 | Passports |
+| MRV-A | 2 | 44 | Machine-readable visas |
+| MRV-B | 2 | 36 | Machine-readable visas |
 
-`MrzParser.Parse` auto-detects the format from the number and length of lines supplied, so you do not need to tell it which one you have.
+`MrzParser.Parse` auto-detects the format from the number and length of lines supplied, so you do not need to tell it which one you have. MRV-A shares TD3's two-lines-of-44 geometry and MRV-B shares TD2's two-lines-of-36 geometry; a visa is told apart from a passport or ID card by a document code that begins with `V` (ICAO Doc 9303 Part 7). A machine-readable visa has **no overall composite check digit** — ICAO 9303 defines the trailing positions on line 2 as optional data, not a composite check — so for `MrvA` and `MrvB` documents `Validation.CompositeCheckDigitValid` is `null` (not applicable) rather than a misleading `false`. The individual document-number, date-of-birth, and date-of-expiry check digits are present on a visa and are still validated. The optional-data region is exposed raw through `PersonalNumber`.
 
 Every `MrzDocument` exposes: `DocumentType`, `DocumentCode`, `IssuingState`, `Surname`, `GivenNames`, `IsNameTruncated`, `DocumentNumber`, `Nationality`, `DateOfBirth`, `Sex`, `DateOfExpiry`, `PersonalNumber`, `SupplementalOptionalData` (TD1's second optional data field, next to the document number), the raw `Lines`, and `Validation`.
 
@@ -103,7 +105,7 @@ char checkDigit = MrzCheckDigitCalculator.Compute("L898902C3"); // '6'
 bool isValid = MrzCheckDigitCalculator.Verify("L898902C3", '6'); // true
 ```
 
-`MrzDocument.Validation` runs this for every check-digited field in the document (document number, date of birth, date of expiry, the TD3 personal number, and the composite check digit) and exposes both the per-field results and a single `IsValid` flag. TD1 and TD2 have no independently check-digited personal number field, so `PersonalNumberCheckDigitValid` is `null` for those two formats rather than a misleading `true`.
+`MrzDocument.Validation` runs this for every check-digited field in the document (document number, date of birth, date of expiry, the TD3 personal number, and the composite check digit) and exposes both the per-field results and a single `IsValid` flag. TD1 and TD2 have no independently check-digited personal number field, so `PersonalNumberCheckDigitValid` is `null` for those two formats rather than a misleading `true`. The MRV-A and MRV-B visas have neither a personal number check digit nor a composite check digit, so both `PersonalNumberCheckDigitValid` and `CompositeCheckDigitValid` are `null` for a visa; `IsValid` reflects only the document-number, date-of-birth, and date-of-expiry check digits it actually carries.
 
 ## Known limitations
 

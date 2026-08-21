@@ -19,4 +19,20 @@ public enum MrzDocumentType
     /// TD3: two lines of 44 characters each, used by passports (ICAO Doc 9303 Part 4).
     /// </summary>
     Td3,
+
+    /// <summary>
+    /// MRV-A: a machine-readable visa in the two-lines-of-44 geometry (the same size as TD3),
+    /// distinguished by a document code beginning with "V" (ICAO Doc 9303 Part 7). Unlike a
+    /// passport, a visa carries no overall composite check digit; the trailing positions on
+    /// line 2 are optional data.
+    /// </summary>
+    MrvA,
+
+    /// <summary>
+    /// MRV-B: a machine-readable visa in the two-lines-of-36 geometry (the same size as TD2),
+    /// distinguished by a document code beginning with "V" (ICAO Doc 9303 Part 7). Unlike a
+    /// TD2 ID card, a visa carries no overall composite check digit; the trailing positions on
+    /// line 2 are optional data.
+    /// </summary>
+    MrvB,
 }

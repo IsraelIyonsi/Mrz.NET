@@ -72,6 +72,14 @@ internal static class MrzConstants
     internal const int DocumentCodeLength = 2;
 
     /// <summary>
+    /// The first character of the document code that identifies a machine-readable visa
+    /// (ICAO Doc 9303 Part 7). It is the unambiguous discriminator between a visa (whose code
+    /// begins with 'V') and a passport (whose code begins with 'P') sharing the same MRZ
+    /// geometry.
+    /// </summary>
+    internal const char VisaDocumentCodeCharacter = 'V';
+
+    /// <summary>
     /// The length, in characters, of a three-letter issuing-state or nationality field.
     /// </summary>
     internal const int StateOrNationalityLength = 3;
